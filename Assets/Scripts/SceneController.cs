@@ -166,8 +166,8 @@ public class SceneController : MonoBehaviour
         RenderSettings.skybox = new(Shader.Find("Skybox/Panoramic"));
 
         // Initialize Video Player
-        GameObject baseObject = new();
-        videoPlayer = baseObject.AddComponent<VideoPlayer>();
+        GameObject videoPlayerWrapper = new("Video Player Wrapper");
+        videoPlayer = videoPlayerWrapper.AddComponent<VideoPlayer>();
         videoPlayer.prepareCompleted += OnVideoPrepared;
         videoPlayer.loopPointReached += OnVideoEnd;
         videoPlayer.playOnAwake = false;
