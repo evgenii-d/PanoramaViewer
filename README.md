@@ -8,7 +8,7 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 
 ### 360 content
 
-|images|videos|
+|Images|Videos|
 |----------|----------|
 |spherical (2:1)|spherical (2:1)
 |stereo spherical equirectangular (1:1)|stereo spherical equirectangular (1:1)
@@ -16,7 +16,7 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 
 ### File formats
 
-|images|videos|
+|Images|Videos|
 |------|------|
 |.jpg|.mp4 (H.264, H.265; AAC)|
 |.png|.webm (VP8; Vorbis)|
@@ -41,7 +41,7 @@ Edit > Project Settings > Player > Android Settings > Other Settings
 
 Under Configuration
 
-* Set "Scripting Backend" to "IL2CPP"
+* Set **Scripting Backend** to **IL2CPP**
 * Disable ARMv7
 * Enable ARM64
 
@@ -49,13 +49,13 @@ Under Configuration
 
 Edit > Project Settings > Player > Android Settings > Publishing Settings
 
-Enable "Custom Main Manifest"
+Enable **Custom Main Manifest**
 
 ### Include shaders
 
 Edit > Project Settings > Graphics
 
-Under "Built-in Shader Settings" change "Size" and select required shader
+Under **Built-in Shader Settings** change **Size** and select required shader
 
 [1]:https://docs.unity3d.com/Manual/VideoSources-FileCompatibility.html
 [2]:https://developer.android.com/media/platform/supported-formats#recommendations
