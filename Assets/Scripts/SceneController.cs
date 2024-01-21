@@ -65,7 +65,7 @@ public class SceneController : MonoBehaviour
         StartCoroutine(ChangePanorama("next"));
     }
 
-    IEnumerator UnlockTransiton()
+    IEnumerator UnlockTransition()
     {
         StartCoroutine(SkyboxFadeTransition("fadeIn", viewerSettings.fadeDuration));
         yield return new WaitForSeconds(viewerSettings.fadeDuration);
@@ -82,7 +82,7 @@ public class SceneController : MonoBehaviour
         videoPlayer.targetTexture = newRenderTexture;
         appMessage = null;
         UpdateSkyboxMainTexture(newRenderTexture);
-        StartCoroutine(UnlockTransiton());
+        StartCoroutine(UnlockTransition());
         videoPlayer.Play();
     }
 
