@@ -11,7 +11,7 @@ Features:
 
 Made with Unity 2022.3.16.f
 
-Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
+Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13 and Pico 4 VR headset
 
 ## Compatible files
 
