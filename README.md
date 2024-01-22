@@ -1,5 +1,14 @@
 # PanoramaViewer
 
+Application for Viewing 360-Degree Photo and Video Panoramas
+
+Features:
+
+* Automatic playback
+* Transition between panoramas with a Fade In/Fade Out effect
+* Zoom In with Right Mouse Button (Windows/Linux) or two-finger tap (Android)
+* Switch between panoramas using the Arrow Left/Page Down and Arrow Right/Page Up keys (**autoPlay** must be set to `false`)
+
 Made with Unity 2022.3.16.f
 
 Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
@@ -12,7 +21,7 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 |----------|----------|
 |spherical (2:1)|spherical (2:1)
 |stereo spherical equirectangular (1:1)|stereo spherical equirectangular (1:1)
-|cubemaps (6:1)|
+|cubemap (6:1)|
 
 ### File formats
 
@@ -30,6 +39,44 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 * [Unity Manual. Video file compatibility][1]
 * [Android for Developers. Supported media formats][2]
 * [FFmpeg. H.265/HEVC Video Encoding Guide][3]
+
+## Application Settings
+
+There are two .json files that will be generated upon the first launch.
+
+Path to the setting files:
+
+* Android: `/storage/emulated/<userid>/Android/data/<packagename>/files`
+* Windows/Linux: Application folder
+
+### PanoramaViewerSettings.json
+
+```json
+{
+    "autoPlay": true,
+    "imageDelay": 17.0,
+    "fadeDuration": 2.0,
+    "imageFormats": [
+        ".jpg",
+        ".png"
+    ],
+    "videoFormats": [
+        ".mp4",
+        ".webm"
+    ]
+}
+```
+
+### FreeCameraSettings.json
+
+```json
+{
+    "fieldOfView": 60.0,
+    "mouseSensitivity": 1.0,
+    "zoom": true,
+    "zoomMagnification": 1.5
+}
+```
 
 ## Nota bene
 
