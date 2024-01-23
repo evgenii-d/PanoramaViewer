@@ -30,11 +30,11 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13 and Pico 4 VR headset
 |.jpg|.mp4 (H.264, H.265; AAC)|
 |.png|.webm (VP8; Vorbis)|
 
-### Recommended encoding settings for ffmpeg
+#### Recommended encoding settings for ffmpeg
 
- `ffmpeg -i input.mov -color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range pc -c:v libx265 -vf scale=XXXX:XXXX -pix_fmt yuv420p -profile:v main -level:v 3.0 -c:a aac output.mp4`
+`ffmpeg -i input.mov -color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range pc -c:v libx265 -vf scale=XXXX:XXXX -pix_fmt yuv420p -profile:v main -level:v 3.0 -c:a aac output.mp4`
 
-#### References
+References:
 
 * [Unity Manual. Video file compatibility][1]
 * [Android for Developers. Supported media formats][2]
