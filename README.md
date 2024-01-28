@@ -1,6 +1,6 @@
 # PanoramaViewer
 
-Application for Viewing 360-Degree Photo and Video Panoramas
+360 Photo Video Panorama Viewer
 
 Features:
 
@@ -11,7 +11,7 @@ Features:
 
 Made with Unity 2022.3.16.f
 
-Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13 and Pico 4 VR headset
+Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 
 ## Compatible files
 
@@ -19,9 +19,9 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13 and Pico 4 VR headset
 
 |Images|Videos|
 |----------|----------|
-|spherical (2:1)|spherical (2:1)
-|stereo spherical equirectangular (1:1)|stereo spherical equirectangular (1:1)
-|cubemap (6:1)|
+|spherical (2:1)|spherical (2:1)|
+|stereo spherical equirectangular (1:1)|stereo spherical equirectangular (1:1)|
+|cubemap (6:1)||
 
 ### File formats
 
@@ -32,13 +32,16 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13 and Pico 4 VR headset
 
 #### Recommended encoding settings for ffmpeg
 
+`ffmpeg -i input.mov -c:v libx264 -preset medium -crf 23 -vf "scale=XXXX:XXXX" -c:a aac "output.mp4"`
+
 `ffmpeg -i input.mov -color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range pc -c:v libx265 -vf scale=XXXX:XXXX -pix_fmt yuv420p -profile:v main -level:v 3.0 -c:a aac output.mp4`
 
 References:
 
 * [Unity Manual. Video file compatibility][1]
 * [Android for Developers. Supported media formats][2]
-* [FFmpeg. H.265/HEVC Video Encoding Guide][3]
+* [FFmpeg. H.264 Video Encoding Guide][3]
+* [FFmpeg. H.265/HEVC Video Encoding Guide][4]
 
 ## Application Settings
 
@@ -106,4 +109,5 @@ Under **Built-in Shader Settings** change **Size** and select required shader
 
 [1]:https://docs.unity3d.com/Manual/VideoSources-FileCompatibility.html
 [2]:https://developer.android.com/media/platform/supported-formats#recommendations
-[3]:https://trac.ffmpeg.org/wiki/Encode/H.265
+[3]:https://trac.ffmpeg.org/wiki/Encode/H.264
+[4]:https://trac.ffmpeg.org/wiki/Encode/H.265
