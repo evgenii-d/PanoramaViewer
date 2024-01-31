@@ -17,11 +17,11 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 
 ### 360 content
 
-|Images|Videos|
-|----------|----------|
-|spherical (2:1)|spherical (2:1)|
-|stereo spherical equirectangular (1:1)|stereo spherical equirectangular (1:1)|
-|cubemap (6:1)||
+|Type|Images|Videos|
+|----------|----------|----------|
+|spherical (2:1)|+|+|
+|stereo spherical equirectangular (1:1)|+|+|
+|cubemap (6:1)|+||
 
 ### File formats
 
@@ -97,9 +97,30 @@ Under Configuration
 
 #### Custom Main Manifest
 
-Edit > Project Settings > Player > Android Settings > Publishing Settings
+Edit > Project Settings > Player > Android Settings > Publishing Settings > Enable **Custom Main Manifest**
 
-Enable **Custom Main Manifest**
+Example of custom manifest with additional permissions
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.unity3d.player"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity android:name="com.unity3d.player.UnityPlayerActivity"
+                  android:theme="@style/UnityThemeSelector">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+        </activity>
+    </application>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+</manifest>
+```
 
 ### Include shaders
 
