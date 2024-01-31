@@ -11,7 +11,7 @@ namespace PanoramaViewer
     public class ViewerSettings
     {
         public bool autoPlay = true;
-        public float imageDelay = 5f;
+        public float imageDelay = 15f;
         public float fadeDuration = 2f;
         public List<string> imageFormats = new() { ".jpg", ".png" };
         public List<string> videoFormats = new() { ".mp4", ".webm" };
