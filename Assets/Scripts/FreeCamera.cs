@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using UnityEngine;
 
 [Serializable]
@@ -12,8 +11,6 @@ public class FreeCameraSettings
     public bool zoom = true;
     [Range(1f, 10.0f)]
     public float zoomMagnification = 1.5f;
-
-    public override string ToString() { return JsonUtility.ToJson(this, true); }
 }
 
 public class FreeCamera : MonoBehaviour
@@ -24,19 +21,10 @@ public class FreeCamera : MonoBehaviour
 
     void Start()
     {
-        string settingsFile = "FreeCameraSettings.json";
-        string appDir = Application.platform switch
-        {
-            RuntimePlatform.Android => Application.persistentDataPath,
-            _ => Directory.GetParent(Application.dataPath).ToString()
-        };
-
+        JsonSettingsManager settingsManager = new("FreeCameraSettings.json");
+        cameraSettings = settingsManager.Load(cameraSettings);
         currentCamera = GetComponent<Camera>();
         Cursor.lockState = CursorLockMode.Locked;
-        settingsFile = Path.Combine(appDir, settingsFile);
-
-        if (!File.Exists(settingsFile)) File.WriteAllText(settingsFile, cameraSettings.ToString());
-        cameraSettings = JsonUtility.FromJson<FreeCameraSettings>(File.ReadAllText(settingsFile));
     }
 
     void Update()

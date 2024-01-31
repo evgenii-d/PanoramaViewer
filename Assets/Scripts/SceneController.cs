@@ -4,9 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
-using UnityEngine.Android;
 using PanoramaViewer;
-using static PanoramaViewer.SkyboxControl;
+using static PanoramaViewer.FileOperations;
+using static PanoramaViewer.PanoramicSkyboxControl;
 
 public class SceneController : MonoBehaviour
 {
@@ -18,14 +18,7 @@ public class SceneController : MonoBehaviour
     bool transitionLock = true;
     bool firstRun = true;
 
-    List<string> GetFilesFromDir(string dirPath, List<string> extensions = null)
-    {
-        List<string> files = Directory.GetFiles(dirPath).ToList();
-        if (extensions == null) return files;
-        return files.Where(file => file.Contains(Path.GetExtension(file).ToLower())).ToList();
-    }
-
-    void ImGUIMessageBox(string text)
+    void MessageWindow(string text)
     {
         Rect boxPosition = new(0, 0, Screen.width, Screen.height);
         int screenFraction = Screen.height / 30;
@@ -34,9 +27,8 @@ public class SceneController : MonoBehaviour
             wordWrap = true,
             fontSize = screenFraction,
             alignment = TextAnchor.MiddleCenter,
-            padding = new RectOffset(screenFraction, screenFraction, screenFraction, screenFraction),
+            padding = new RectOffset(screenFraction, screenFraction, screenFraction, screenFraction)
         };
-
         GUI.TextArea(boxPosition, text, textStyle);
     }
 
@@ -121,39 +113,27 @@ public class SceneController : MonoBehaviour
     }
 
     void OnVideoEnd(VideoPlayer _) { if (viewerSettings.autoPlay) StartCoroutine(ChangePanorama("next")); }
+    void OnGUI() { if (appMessage != null) MessageWindow(appMessage); }
 
     void Start()
     {
-        string appDir = Directory.GetParent(Application.dataPath).ToString();
-        string mediaDir = "PanoramaMediaFiles";
-        string settingsFile = "PanoramaViewerSettings.json";
-
+        // Scene blackout
         RenderSettings.skybox.SetFloat("_Exposure", 0);
+        RenderSettings.skybox = null;
 
-        // Check permission before accessing files on Android
-        if (Application.platform == RuntimePlatform.Android)
+        JsonSettingsManager settingsManager = new("PanoramaViewerSettings.json");
+        viewerSettings = settingsManager.Load(viewerSettings);
+
+        // Set media files directory
+        string mediaDir = Application.platform switch
         {
-            if (!Permission.HasUserAuthorizedPermission(Permission.ExternalStorageRead) ||
-            !Permission.HasUserAuthorizedPermission(Permission.ExternalStorageWrite))
-            {
-                Permission.RequestUserPermission(Permission.ExternalStorageRead);
-                Permission.RequestUserPermission(Permission.ExternalStorageWrite);
-                appMessage = "Restart application to apply permission changes";
-                return;
-            }
-            appDir = Application.persistentDataPath;
-        }
-
-        mediaDir = Path.Combine(appDir, mediaDir);
-        settingsFile = Path.Combine(appDir, settingsFile);
-        List<string> fileFormats = viewerSettings.imageFormats.Concat(viewerSettings.videoFormats).ToList();
-
-        // Load settings from file
-        if (File.Exists(settingsFile))
-            viewerSettings = JsonUtility.FromJson<ViewerSettings>(File.ReadAllText(settingsFile));
-        else File.WriteAllText(settingsFile, viewerSettings.ToString());
+            RuntimePlatform.Android => Application.persistentDataPath,
+            _ => Directory.GetParent(Application.dataPath).ToString()
+        };
+        mediaDir = Path.Combine(mediaDir, "PanoramaMediaFiles");
 
         // Check media files
+        List<string> fileFormats = viewerSettings.imageFormats.Concat(viewerSettings.videoFormats).ToList();
         if (!Directory.Exists(mediaDir)) Directory.CreateDirectory(mediaDir);
         mediaFiles = GetFilesFromDir(mediaDir, fileFormats);
         if (mediaFiles.Count == 0)
@@ -183,6 +163,4 @@ public class SceneController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
         if (!transitionLock && !viewerSettings.autoPlay) ControlKeys();
     }
-
-    void OnGUI() { if (appMessage != null) ImGUIMessageBox(appMessage); }
 }

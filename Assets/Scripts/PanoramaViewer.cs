@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,18 +11,23 @@ namespace PanoramaViewer
     public class ViewerSettings
     {
         public bool autoPlay = true;
-        public float imageDelay = 17f;
+        public float imageDelay = 5f;
         public float fadeDuration = 2f;
         public List<string> imageFormats = new() { ".jpg", ".png" };
         public List<string> videoFormats = new() { ".mp4", ".webm" };
+    }
 
-        public override string ToString()
+    public static class FileOperations
+    {
+        public static List<string> GetFilesFromDir(string dirPath, List<string> extensions = null)
         {
-            return JsonUtility.ToJson(this, true);
+            List<string> files = Directory.GetFiles(dirPath).ToList();
+            if (extensions == null) return files;
+            return files.Where(file => file.Contains(Path.GetExtension(file).ToLower())).ToList();
         }
     }
 
-    public static class SkyboxControl
+    public static class PanoramicSkyboxControl
     {
         static Texture2D LoadTextureFromFile(string path)
         {
