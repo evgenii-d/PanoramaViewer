@@ -45,7 +45,7 @@ References:
 
 ## Application Settings
 
-There are two .json files that will be generated upon the first launch.
+There are two `.json` files that will be generated upon the first launch: **PanoramaViewerSettings** and **FreeCameraSettings**.
 
 Path to the setting files:
 
@@ -57,7 +57,7 @@ Path to the setting files:
 ```json
 {
     "autoPlay": true,
-    "imageDelay": 17.0,
+    "imageDelay": 15.0,
     "fadeDuration": 2.0,
     "imageFormats": [
         ".jpg",
