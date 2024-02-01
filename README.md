@@ -32,9 +32,9 @@ Tested on Windows 11 (23H2), Ubuntu 22.04, Android 13
 
 #### Recommended encoding settings for ffmpeg
 
-`ffmpeg -i input.mov -c:v libx264 -vf scale=XXXX:XXXX -pix_fmt yuv420p -preset medium -crf 23 -c:a aac output.mp4`
+`ffmpeg -i input.mov -c:v libx264 -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range pc -vf scale=XXXX:XXXX -preset medium -crf 23 -c:a aac output.mp4`
 
-`ffmpeg -i input.mov -c:v libx265 -vf scale=XXXX:XXXX -pix_fmt yuv420p -profile:v main -level:v 3.0 -color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range pc -c:a aac output.mp4`
+`ffmpeg -i input.mov -c:v libx265 -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range pc -vf scale=XXXX:XXXX -profile:v main -level:v 3.0 -c:a aac output.mp4`
 
 References:
 
@@ -100,6 +100,7 @@ Under Configuration
 Edit > Project Settings > Player > Android Settings > Publishing Settings > Enable **Custom Main Manifest**
 
 Example of custom manifest with additional permissions
+
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
