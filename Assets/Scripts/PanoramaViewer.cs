@@ -4,6 +4,8 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 namespace PanoramaViewer
 {
@@ -15,6 +17,55 @@ namespace PanoramaViewer
         public float fadeDuration = 2f;
         public List<string> imageFormats = new() { ".jpg", ".png" };
         public List<string> videoFormats = new() { ".mp4", ".webm" };
+    }
+
+    public class ScreenMessage
+    {
+        TextMeshPro textComponent;
+        GameObject canvasWrapper;
+        Canvas uiCanvas;
+        Image imageComponent;
+
+        public void Show() { canvasWrapper.SetActive(true); }
+
+        public void Hide() { canvasWrapper.SetActive(false); }
+
+        public void SetText(string text) { textComponent.text = text; }
+
+        public void SetBackgroundColor(Color color) { imageComponent.color = color; }
+
+        public ScreenMessage(Camera mainCamera)
+        {
+            canvasWrapper = new($"Screen Message {Guid.NewGuid()}");
+            uiCanvas = canvasWrapper.AddComponent<Canvas>();
+            canvasWrapper.AddComponent<CanvasScaler>();
+            canvasWrapper.AddComponent<GraphicRaycaster>();
+            uiCanvas.renderMode = RenderMode.ScreenSpaceCamera;
+            uiCanvas.worldCamera = mainCamera;
+            uiCanvas.planeDistance = 1;
+
+            // Text background
+            Vector2 canvasSize = uiCanvas.GetComponent<RectTransform>().sizeDelta;
+            GameObject background = new("Background");
+            imageComponent = background.AddComponent<Image>();
+            RectTransform imageTransform = background.GetComponent<RectTransform>();
+
+            imageComponent.transform.SetParent(canvasWrapper.transform, false);
+            imageTransform.sizeDelta = new Vector2(canvasSize.x, canvasSize.y);
+            imageTransform.anchoredPosition3D = new Vector3(0, 0, 1);
+            imageComponent.color = Color.clear;
+
+            // Message text
+            GameObject textWrapper = new("Text Wrapper");
+            textWrapper.transform.SetParent(canvasWrapper.transform, false);
+            textComponent = textWrapper.AddComponent<TextMeshPro>();
+            textComponent.fontSharedMaterial.shader = Shader.Find("TextMeshPro/Distance Field Overlay");
+
+            RectTransform textTransform = textWrapper.GetComponent<RectTransform>();
+            textTransform.sizeDelta = new Vector2(canvasSize.x / 4, canvasSize.y);
+            textComponent.fontSize = canvasSize.y * 15 / 100;
+            textComponent.alignment = TextAlignmentOptions.Center;
+        }
     }
 
     public static class FileOperations
@@ -54,17 +105,19 @@ namespace PanoramaViewer
             return $"{width / gcd}:{height / gcd}";
         }
 
-        /// <summary>Transition effect using skybox exposure</summary>
-        /// <param name="type">"fadeIn" or "fadeOut"</param>
-        /// <param name="duration">Time in seconds</param>
-        public static IEnumerator SkyboxFadeTransition(string type, float duration)
+        /// <summary>
+        /// Fades the skybox in or out by adjusting its exposure over time.
+        /// </summary>
+        /// <param name="fadeIn">True for fade-in, False for fade-out.</param>
+        /// <param name="duration">The duration of the transition in seconds.</param>
+        /// <returns>An IEnumerator that can be used to yield control during the transition.</returns>
+        public static IEnumerator SkyboxFadeTransition(bool fadeIn, float duration)
         {
-            type = type.ToLower();
             const float Steps = 100;
-            float i = type == "fadein" ? 0 : Steps;
-            while (type == "fadein" ? i <= Steps : i >= 0)
+            float i = fadeIn ? 0 : Steps;
+            while (fadeIn ? i <= Steps : i >= 0)
             {
-                i = type == "fadein" ? i + 1 : i - 1;
+                i = fadeIn ? i + 1 : i - 1;
                 RenderSettings.skybox.SetFloat("_Exposure", i / Steps);
                 yield return new WaitForSeconds(duration / Steps);
             }

@@ -31,7 +31,7 @@ public class FreeCamera : MonoBehaviour
     {
         rotation.x += Input.GetAxis("Mouse X") * cameraSettings.mouseSensitivity;
         rotation.y += Input.GetAxis("Mouse Y") * cameraSettings.mouseSensitivity;
-        transform.localRotation = Quaternion.Euler(-rotation.y, rotation.x, 0);
+        currentCamera.transform.localRotation = Quaternion.Euler(-rotation.y, rotation.x, 0);
 
         // Detect right mouse click
         if (Input.GetMouseButton(1) && cameraSettings.zoom)
