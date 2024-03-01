@@ -14,11 +14,12 @@ public class SceneController : MonoBehaviour
     ViewerSettings viewerSettings = new();
     ScreenMessage screenMessage;
     VideoPlayer videoPlayer;
-    List<string> mediaFiles;
-    int currentMediaIndex = -1;
-    bool transitionLock = true;
-    bool firstRun = true;
+    List<string> mediaFiles;                // List to store the paths of images and videos to display
+    int currentMediaIndex = -1;             // Tracks the index of the currently displayed media file
+    bool transitionLock = true;             // Prevents transitions from happening while one is in progress
+    bool firstRun = true;                   // Flag to indicate if this is the initial run
 
+    /// <summary> Handles keyboard input for navigation </summary>
     void ControlKeys()
     {
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.PageDown))
@@ -31,12 +32,14 @@ public class SceneController : MonoBehaviour
         }
     }
 
+    /// <summary> Waits for a specified time before fading out the skybox </summary>
     IEnumerator VideoFadeOut(float delay)
     {
         yield return new WaitForSeconds(delay);
         StartCoroutine(SkyboxFadeTransition(false, viewerSettings.fadeDuration));
     }
 
+    /// <summary> Waits for the image display time before fading out </summary>
     IEnumerator ImageFadeOut()
     {
         yield return new WaitForSeconds(viewerSettings.imageDelay);
@@ -44,6 +47,7 @@ public class SceneController : MonoBehaviour
         StartCoroutine(ChangePanorama("next"));
     }
 
+    /// <summary> Fades in the skybox and unlocks transitions </summary>
     IEnumerator UnlockTransition()
     {
         StartCoroutine(SkyboxFadeTransition(true, viewerSettings.fadeDuration));
@@ -54,6 +58,7 @@ public class SceneController : MonoBehaviour
     void OnVideoPrepared(VideoPlayer _)
     {
         RenderTexture newRenderTexture = new((int)videoPlayer.width, (int)videoPlayer.height, 32);
+        // Determine when to start video fade out, based on duration and fade settings
         float timeBeforeEnd = (float)videoPlayer.length - viewerSettings.fadeDuration - 1;
 
         if (viewerSettings.autoPlay) StartCoroutine(VideoFadeOut(timeBeforeEnd));
@@ -70,6 +75,7 @@ public class SceneController : MonoBehaviour
         transitionLock = true;
         currentMediaIndex = direction.ToLower() == "next" ? ++currentMediaIndex : --currentMediaIndex;
 
+        // Handles cycling back around if reaching end of the media file list
         if (currentMediaIndex > mediaFiles.Count - 1) currentMediaIndex = 0;
         if (currentMediaIndex < 0) currentMediaIndex = mediaFiles.Count - 1;
 

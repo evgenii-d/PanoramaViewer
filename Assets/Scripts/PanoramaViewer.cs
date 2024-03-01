@@ -51,7 +51,7 @@ namespace PanoramaViewer
             RectTransform imageTransform = background.GetComponent<RectTransform>();
 
             imageComponent.transform.SetParent(canvasWrapper.transform, false);
-            imageTransform.sizeDelta = new Vector2(canvasSize.x, canvasSize.y);
+            imageTransform.sizeDelta = new Vector2(canvasSize.x * 1.5f, canvasSize.y * 1.5f);
             imageTransform.anchoredPosition3D = new Vector3(0, 0, 1);
             imageComponent.color = Color.clear;
 
@@ -105,9 +105,7 @@ namespace PanoramaViewer
             return $"{width / gcd}:{height / gcd}";
         }
 
-        /// <summary>
-        /// Fades the skybox in or out by adjusting its exposure over time.
-        /// </summary>
+        /// <summary> Fades the skybox in or out by adjusting its exposure over time </summary>
         /// <param name="fadeIn">True for fade-in, False for fade-out.</param>
         /// <param name="duration">The duration of the transition in seconds.</param>
         /// <returns>An IEnumerator that can be used to yield control during the transition.</returns>
