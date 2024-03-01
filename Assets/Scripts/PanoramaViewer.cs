@@ -63,7 +63,7 @@ namespace PanoramaViewer
 
             RectTransform textTransform = textWrapper.GetComponent<RectTransform>();
             textTransform.sizeDelta = new Vector2(canvasSize.x / 4, canvasSize.y);
-            textComponent.fontSize = canvasSize.y * 15 / 100;
+            textComponent.fontSize = canvasSize.y * 20 / 100;
             textComponent.alignment = TextAlignmentOptions.Center;
         }
     }
