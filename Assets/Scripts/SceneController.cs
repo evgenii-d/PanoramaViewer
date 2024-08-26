@@ -10,28 +10,16 @@ using static PanoramaViewer.PanoramicSkyboxControl;
 
 public class SceneController : MonoBehaviour
 {
+    public Camera mainCamera;
     ViewerSettings viewerSettings = new();
+    ScreenMessage screenMessage;
     VideoPlayer videoPlayer;
-    List<string> mediaFiles;
-    int currentMediaIndex = -1;
-    string appMessage = null;
-    bool transitionLock = true;
-    bool firstRun = true;
+    List<string> mediaFiles;                // List to store the paths of images and videos to display
+    int currentMediaIndex = -1;             // Tracks the index of the currently displayed media file
+    bool transitionLock = true;             // Prevents transitions from happening while one is in progress
+    bool firstRun = true;                   // Flag to indicate if this is the initial run
 
-    void MessageWindow(string text)
-    {
-        Rect boxPosition = new(0, 0, Screen.width, Screen.height);
-        int screenFraction = Screen.height / 30;
-        GUIStyle textStyle = new(GUI.skin.box)
-        {
-            wordWrap = true,
-            fontSize = screenFraction,
-            alignment = TextAnchor.MiddleCenter,
-            padding = new RectOffset(screenFraction, screenFraction, screenFraction, screenFraction)
-        };
-        GUI.TextArea(boxPosition, text, textStyle);
-    }
-
+    /// <summary> Handles keyboard input for navigation </summary>
     void ControlKeys()
     {
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.PageDown))
@@ -44,22 +32,25 @@ public class SceneController : MonoBehaviour
         }
     }
 
+    /// <summary> Waits for a specified time before fading out the skybox </summary>
     IEnumerator VideoFadeOut(float delay)
     {
         yield return new WaitForSeconds(delay);
-        StartCoroutine(SkyboxFadeTransition("fadeOut", viewerSettings.fadeDuration));
+        StartCoroutine(SkyboxFadeTransition(false, viewerSettings.fadeDuration));
     }
 
+    /// <summary> Waits for the image display time before fading out </summary>
     IEnumerator ImageFadeOut()
     {
         yield return new WaitForSeconds(viewerSettings.imageDelay);
-        yield return SkyboxFadeTransition("fadeOut", viewerSettings.fadeDuration);
+        yield return SkyboxFadeTransition(false, viewerSettings.fadeDuration);
         StartCoroutine(ChangePanorama("next"));
     }
 
+    /// <summary> Fades in the skybox and unlocks transitions </summary>
     IEnumerator UnlockTransition()
     {
-        StartCoroutine(SkyboxFadeTransition("fadeIn", viewerSettings.fadeDuration));
+        StartCoroutine(SkyboxFadeTransition(true, viewerSettings.fadeDuration));
         yield return new WaitForSeconds(viewerSettings.fadeDuration);
         transitionLock = false;
     }
@@ -67,12 +58,13 @@ public class SceneController : MonoBehaviour
     void OnVideoPrepared(VideoPlayer _)
     {
         RenderTexture newRenderTexture = new((int)videoPlayer.width, (int)videoPlayer.height, 32);
+        // Determine when to start video fade out, based on duration and fade settings
         float timeBeforeEnd = (float)videoPlayer.length - viewerSettings.fadeDuration - 1;
 
         if (viewerSettings.autoPlay) StartCoroutine(VideoFadeOut(timeBeforeEnd));
 
         videoPlayer.targetTexture = newRenderTexture;
-        appMessage = null;
+        screenMessage.Hide();
         UpdateSkyboxMainTexture(newRenderTexture);
         StartCoroutine(UnlockTransition());
         videoPlayer.Play();
@@ -83,11 +75,12 @@ public class SceneController : MonoBehaviour
         transitionLock = true;
         currentMediaIndex = direction.ToLower() == "next" ? ++currentMediaIndex : --currentMediaIndex;
 
+        // Handles cycling back around if reaching end of the media file list
         if (currentMediaIndex > mediaFiles.Count - 1) currentMediaIndex = 0;
         if (currentMediaIndex < 0) currentMediaIndex = mediaFiles.Count - 1;
 
         if (!viewerSettings.autoPlay && !firstRun)
-            yield return SkyboxFadeTransition("fadeOut", viewerSettings.fadeDuration);
+            yield return SkyboxFadeTransition(false, viewerSettings.fadeDuration);
 
         string fileFormat = Path.GetExtension(mediaFiles[currentMediaIndex]);
         switch (fileFormat)
@@ -101,8 +94,8 @@ public class SceneController : MonoBehaviour
                 RenderTexture renderTexture = ImageToRenderTexture(mediaFiles[currentMediaIndex]);
                 UpdateSkyboxMainTexture(renderTexture);
                 Resources.UnloadUnusedAssets();
-                appMessage = null;
-                yield return SkyboxFadeTransition("fadeIn", viewerSettings.fadeDuration);
+                screenMessage.Hide();
+                yield return SkyboxFadeTransition(true, viewerSettings.fadeDuration);
                 transitionLock = false;
                 if (viewerSettings.autoPlay) StartCoroutine(ImageFadeOut());
                 break;
@@ -113,14 +106,17 @@ public class SceneController : MonoBehaviour
     }
 
     void OnVideoEnd(VideoPlayer _) { if (viewerSettings.autoPlay) StartCoroutine(ChangePanorama("next")); }
-    void OnGUI() { if (appMessage != null) MessageWindow(appMessage); }
 
     void Start()
     {
+        screenMessage = new(mainCamera);
+        screenMessage.SetBackgroundColor(Color.black);
+
         // Scene blackout
         RenderSettings.skybox.SetFloat("_Exposure", 0);
         RenderSettings.skybox = null;
 
+        // Load settings
         JsonSettingsManager settingsManager = new("PanoramaViewerSettings.json");
         viewerSettings = settingsManager.Load(viewerSettings);
 
@@ -138,7 +134,7 @@ public class SceneController : MonoBehaviour
         mediaFiles = GetFilesFromDir(mediaDir, fileFormats);
         if (mediaFiles.Count == 0)
         {
-            appMessage = $"Media files not found\n\nAdd files to\n\"{mediaDir}\"\nand restart application";
+            screenMessage.SetText($"Media files not found\n\nAdd files to\n\"{mediaDir}\"\nand restart application");
             return;
         }
 
@@ -146,7 +142,7 @@ public class SceneController : MonoBehaviour
         RenderSettings.skybox = new(Shader.Find("Skybox/Panoramic"));
 
         // Initialize Video Player
-        GameObject videoPlayerWrapper = new("Video Player Wrapper");
+        GameObject videoPlayerWrapper = new("Video Player");
         videoPlayer = videoPlayerWrapper.AddComponent<VideoPlayer>();
         videoPlayer.prepareCompleted += OnVideoPrepared;
         videoPlayer.loopPointReached += OnVideoEnd;
@@ -154,7 +150,7 @@ public class SceneController : MonoBehaviour
         videoPlayer.isLooping = true;
         videoPlayer.SetDirectAudioVolume(0, .5f);
 
-        appMessage = "Loading ...";
+        screenMessage.SetText("Loading ...");
         StartCoroutine(ChangePanorama("next"));
     }
 
