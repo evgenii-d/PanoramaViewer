@@ -5,14 +5,14 @@ public class JsonSettingsManager
 {
     readonly string settingsPath;
 
-    public JsonSettingsManager(string fullFilename)
+    public JsonSettingsManager(string filename)
     {
         string settingsDir = Application.platform switch
         {
             RuntimePlatform.Android => Application.persistentDataPath,
             _ => Directory.GetParent(Application.dataPath).ToString()
         };
-        settingsPath = Path.Combine(settingsDir, fullFilename);
+        settingsPath = Path.Combine(settingsDir, filename);
     }
 
     public void Save<T>(T jsonData)
@@ -22,7 +22,10 @@ public class JsonSettingsManager
 
     public T Load<T>(T jsonData)
     {
-        if (File.Exists(settingsPath)) return JsonUtility.FromJson<T>(File.ReadAllText(settingsPath));
+        if (File.Exists(settingsPath))
+        {
+            return JsonUtility.FromJson<T>(File.ReadAllText(settingsPath));
+        }
         Save(jsonData);
         return jsonData;
     }
