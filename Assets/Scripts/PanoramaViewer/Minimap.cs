@@ -35,12 +35,13 @@ namespace Assets.Scripts.PanoramaViewer
         /// A float value for the padding (indent) from the screen edges.
         /// </param>
         public static void SetMinimapSizeAndPosition(
-            RawImage rawImage,
+            GameObject minimap,
             MinimapPosition position,
             float scale,
             float padding
         )
         {
+            var rawImage = minimap.transform.Find("Minimap Image");
             var screenSize = new Vector2(Screen.width, Screen.height);
             var baseMinimapSize = screenSize / 4f;
             var minimapSize = baseMinimapSize * Math.Clamp(scale, 0f, 2f);

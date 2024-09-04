@@ -13,8 +13,7 @@ using static Assets.Scripts.PanoramaViewer.PanoramicSkyboxControl;
 public class SceneController : MonoBehaviour
 {
     public Camera mainCamera;
-    ViewerSettings viewerSettings = new();
-    ScreenMessage screenMessage;
+    ViewerConfig viewerConfig;
     VideoPlayer videoPlayer;
     // List to store the paths of images and videos to display
     List<string> mediaFiles;
@@ -24,22 +23,31 @@ public class SceneController : MonoBehaviour
     bool transitionLock = true;
     // Flag to indicate if this is the initial run
     bool firstRun = true;
+    readonly List<string> imageFormats = new() { ".jpg", ".png" };
+    readonly List<string> videoFormats = new() { ".mp4", ".webm" };
 
     public enum PanoramaDirection
     {
-        Next,
-        Previous
+        Forward,
+        Backward
     }
 
     public static List<string> GetFilesFromDir(
-            string dirPath, List<string> extensions = null
-        )
+        string dirPath, IEnumerable<string> extensions = null
+    )
     {
-        List<string> files = Directory.GetFiles(dirPath).ToList();
-        if (extensions == null) return files;
-        return files.Where(
-            file => file.Contains(Path.GetExtension(file).ToLower())
-        ).ToList();
+        if (extensions == null || !extensions.Any())
+        {
+            return Directory.GetFiles(dirPath).ToList();
+        }
+
+        extensions = extensions.Select(ext => ext.ToLowerInvariant());
+        return Directory.EnumerateFiles(dirPath)
+            .Where(
+                file => extensions.Contains(
+                    Path.GetExtension(file).ToLowerInvariant()
+                )
+            ).ToList();
     }
 
     /// <summary> Handles keyboard input for navigation </summary>
@@ -47,10 +55,10 @@ public class SceneController : MonoBehaviour
     {
         var keys = new Dictionary<KeyCode, PanoramaDirection>
         {
-            { KeyCode.LeftArrow, PanoramaDirection.Previous },
-            { KeyCode.PageDown, PanoramaDirection.Previous },
-            { KeyCode.RightArrow, PanoramaDirection.Next },
-            { KeyCode.PageUp, PanoramaDirection.Next }
+            { KeyCode.LeftArrow, PanoramaDirection.Backward },
+            { KeyCode.PageDown, PanoramaDirection.Backward },
+            { KeyCode.RightArrow, PanoramaDirection.Forward },
+            { KeyCode.PageUp, PanoramaDirection.Forward }
         };
 
         foreach (var element in keys)
@@ -70,7 +78,7 @@ public class SceneController : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         StartCoroutine(
-            SkyboxFadeTransition(false, viewerSettings.fadeDuration)
+            SkyboxFadeTransition(false, viewerConfig.fadeDuration)
         );
     }
 
@@ -79,9 +87,9 @@ public class SceneController : MonoBehaviour
     /// </summary>
     IEnumerator ImageFadeOut()
     {
-        yield return new WaitForSeconds(viewerSettings.imageDelay);
-        yield return SkyboxFadeTransition(false, viewerSettings.fadeDuration);
-        StartCoroutine(ChangePanorama(PanoramaDirection.Next));
+        yield return new WaitForSeconds(viewerConfig.imageDelay);
+        yield return SkyboxFadeTransition(false, viewerConfig.fadeDuration);
+        StartCoroutine(ChangePanorama(PanoramaDirection.Forward));
     }
 
     /// <summary>
@@ -90,9 +98,9 @@ public class SceneController : MonoBehaviour
     IEnumerator UnlockTransition()
     {
         StartCoroutine(
-            SkyboxFadeTransition(true, viewerSettings.fadeDuration)
+            SkyboxFadeTransition(true, viewerConfig.fadeDuration)
         );
-        yield return new WaitForSeconds(viewerSettings.fadeDuration);
+        yield return new WaitForSeconds(viewerConfig.fadeDuration);
         transitionLock = false;
     }
 
@@ -102,15 +110,15 @@ public class SceneController : MonoBehaviour
             (int)videoPlayer.width, (int)videoPlayer.height, 32
         );
 
-        if (viewerSettings.autoPlay)
+        if (viewerConfig.autoPlay)
         {
-            var fadeDuration = viewerSettings.fadeDuration - 1;
+            var fadeDuration = viewerConfig.fadeDuration - 1;
             var timeBeforeEnd = (float)videoPlayer.length - fadeDuration;
             StartCoroutine(VideoFadeOut(timeBeforeEnd));
         }
 
         videoPlayer.targetTexture = newRenderTexture;
-        screenMessage.Hide();
+        ScreenMessage.Hide();
         UpdateSkyboxMainTexture(newRenderTexture);
         StartCoroutine(UnlockTransition());
         videoPlayer.Play();
@@ -119,27 +127,27 @@ public class SceneController : MonoBehaviour
     IEnumerator ChangePanorama(PanoramaDirection direction)
     {
         transitionLock = true;
-        currentMediaIndex += direction == PanoramaDirection.Next ? 1 : -1;
+        currentMediaIndex += direction == PanoramaDirection.Forward ? 1 : -1;
 
         // Handles cycling back around if reaching end of the media file list
         currentMediaIndex = (
             currentMediaIndex + mediaFiles.Count
         ) % mediaFiles.Count;
 
-        if (!viewerSettings.autoPlay && !firstRun)
+        if (!viewerConfig.autoPlay && !firstRun)
         {
             yield return SkyboxFadeTransition(
-                false, viewerSettings.fadeDuration
+                false, viewerConfig.fadeDuration
             );
         }
 
         string fileFormat = Path.GetExtension(mediaFiles[currentMediaIndex]);
-        if (viewerSettings.videoFormats.Contains(fileFormat))
+        if (videoFormats.Contains(fileFormat))
         {
             videoPlayer.url = mediaFiles[currentMediaIndex];
             videoPlayer.Prepare();
         }
-        else if (viewerSettings.imageFormats.Contains(fileFormat))
+        else if (imageFormats.Contains(fileFormat))
         {
             videoPlayer.Stop();
             var renderTexture = ImageToRenderTexture(
@@ -147,56 +155,54 @@ public class SceneController : MonoBehaviour
             );
             UpdateSkyboxMainTexture(renderTexture);
             Resources.UnloadUnusedAssets();
-            screenMessage.Hide();
+            ScreenMessage.Hide();
             yield return SkyboxFadeTransition(
-                true, viewerSettings.fadeDuration
+                true, viewerConfig.fadeDuration
             );
             transitionLock = false;
-            if (viewerSettings.autoPlay) StartCoroutine(ImageFadeOut());
+            if (viewerConfig.autoPlay) StartCoroutine(ImageFadeOut());
         }
         firstRun = false;
     }
 
     void OnVideoEnd(VideoPlayer _)
     {
-        if (viewerSettings.autoPlay)
+        if (viewerConfig.autoPlay)
         {
-            StartCoroutine(ChangePanorama(PanoramaDirection.Next));
+            StartCoroutine(ChangePanorama(PanoramaDirection.Forward));
         }
     }
 
     void Start()
     {
-        screenMessage = new(mainCamera);
-        screenMessage.SetBackgroundColor(Color.black);
-
         // Scene blackout
         RenderSettings.skybox.SetFloat("_Exposure", 0);
         RenderSettings.skybox = null;
 
+        // Set app directories
+        var appDataDir = Application.platform == RuntimePlatform.Android
+            ? Application.persistentDataPath
+            : Directory.GetParent(Application.dataPath).ToString();
+        var mediaDir = Path.Combine(appDataDir, "PanoramaMediaFiles");
+        var minimapsDir = Path.Combine(mediaDir, "Minimaps");
+
+        Directory.CreateDirectory(mediaDir);
+        Directory.CreateDirectory(minimapsDir);
+
         // Load settings
-        var settingsManager = new JsonSettingsManager(
-            "PanoramaViewerSettings.json"
+        var settingsManager = new JsonConfigManager(
+            Path.Combine(appDataDir, "PanoramaViewerConfig.json")
         );
-        viewerSettings = settingsManager.Load(viewerSettings);
+        viewerConfig = settingsManager.Load<ViewerConfig>();
 
-        // Set media files directory
-        string mediaDir = Application.platform switch
-        {
-            RuntimePlatform.Android => Application.persistentDataPath,
-            _ => Directory.GetParent(Application.dataPath).ToString()
-        };
-        mediaDir = Path.Combine(mediaDir, "PanoramaMediaFiles");
+        // Get media files
+        mediaFiles = GetFilesFromDir(
+            mediaDir, imageFormats.Union(videoFormats)
+        );
 
-        // Check media files
-        var fileFormats = viewerSettings.imageFormats
-            .Concat(viewerSettings.videoFormats)
-            .ToList();
-        if (!Directory.Exists(mediaDir)) Directory.CreateDirectory(mediaDir);
-        mediaFiles = GetFilesFromDir(mediaDir, fileFormats);
         if (mediaFiles.Count == 0)
         {
-            screenMessage.SetText(
+            ScreenMessage.Show(
                 "Media files not found\n\n"
                 + $"Add files to\n\"{mediaDir}\"\n"
                 + "and restart application"
@@ -217,15 +223,14 @@ public class SceneController : MonoBehaviour
         videoPlayer.SetDirectAudioVolume(0, .5f);
 
         // ---
-
-        var minimapWrapper = new GameObject("Minimap");
-        var minimapCanvas = minimapWrapper.AddComponent<Canvas>();
+        var minimap = new GameObject("Minimap");
+        var minimapCanvas = minimap.AddComponent<Canvas>();
         minimapCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        minimapWrapper.AddComponent<CanvasScaler>();
-        minimapWrapper.AddComponent<GraphicRaycaster>();
+        minimap.AddComponent<CanvasScaler>();
+        minimap.AddComponent<GraphicRaycaster>();
 
         var minimapImageWrapper = new GameObject("Minimap Image");
-        minimapImageWrapper.transform.SetParent(minimapWrapper.transform);
+        minimapImageWrapper.transform.SetParent(minimap.transform);
 
         var minimapImage = minimapImageWrapper.AddComponent<RawImage>();
         var imagePath = @"";
@@ -233,16 +238,16 @@ public class SceneController : MonoBehaviour
         var imageData = File.ReadAllBytes(imagePath);
         minimapImage.texture = LoadTextureFromFile(imagePath);
 
-        SetMinimapSizeAndPosition(minimapImage, MinimapPosition.TopRight, 1, 50f);
-
+        SetMinimapSizeAndPosition(minimap, MinimapPosition.TopRight, 1, 50f);
         // ---
-        screenMessage.SetText("Loading ...");
-        StartCoroutine(ChangePanorama(PanoramaDirection.Next));
+
+        ScreenMessage.Show("Loading ...");
+        StartCoroutine(ChangePanorama(PanoramaDirection.Forward));
     }
 
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
-        if (!transitionLock && !viewerSettings.autoPlay) ControlKeys();
+        if (!transitionLock && !viewerConfig.autoPlay) ControlKeys();
     }
 }

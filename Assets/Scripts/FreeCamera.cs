@@ -1,8 +1,9 @@
 using System;
+using System.IO;
 using UnityEngine;
 
 [Serializable]
-public class FreeCameraSettings
+public class FreeCameraConfig
 {
     [Range(0.0f, 180.0f)]
     public float fieldOfView = 60f;
@@ -15,28 +16,37 @@ public class FreeCameraSettings
 
 public class FreeCamera : MonoBehaviour
 {
-    public FreeCameraSettings cameraSettings = new();
+    public FreeCameraConfig cameraConfig;
     Camera currentCamera;
     Vector2 rotation;
 
     void Start()
     {
-        JsonSettingsManager settingsManager = new("FreeCameraSettings.json");
-        cameraSettings = settingsManager.Load(cameraSettings);
+        string appDataDir = Application.platform == RuntimePlatform.Android
+            ? Application.persistentDataPath
+            : Directory.GetParent(Application.dataPath).ToString();
+        var settingsManager = new JsonConfigManager(
+            Path.Combine(appDataDir, "FreeCameraConfig.json")
+        );
+        cameraConfig = settingsManager.Load<FreeCameraConfig>();
         currentCamera = GetComponent<Camera>();
         Cursor.lockState = CursorLockMode.Locked;
     }
 
     void Update()
     {
-        rotation.x += Input.GetAxis("Mouse X") * cameraSettings.mouseSensitivity;
-        rotation.y += Input.GetAxis("Mouse Y") * cameraSettings.mouseSensitivity;
-        currentCamera.transform.localRotation = Quaternion.Euler(-rotation.y, rotation.x, 0);
+        rotation.x +=
+            Input.GetAxis("Mouse X") * cameraConfig.mouseSensitivity;
+        rotation.y +=
+            Input.GetAxis("Mouse Y") * cameraConfig.mouseSensitivity;
+        currentCamera.transform.localRotation =
+            Quaternion.Euler(-rotation.y, rotation.x, 0);
 
         // Detect right mouse click
-        if (Input.GetMouseButton(1) && cameraSettings.zoom)
-            currentCamera.fieldOfView = cameraSettings.fieldOfView / cameraSettings.zoomMagnification;
+        if (Input.GetMouseButton(1) && cameraConfig.zoom)
+            currentCamera.fieldOfView =
+                cameraConfig.fieldOfView / cameraConfig.zoomMagnification;
         else
-            currentCamera.fieldOfView = cameraSettings.fieldOfView;
+            currentCamera.fieldOfView = cameraConfig.fieldOfView;
     }
 }

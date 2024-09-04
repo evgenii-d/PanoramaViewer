@@ -74,5 +74,5 @@ crashlytics-build.properties
 # Project specific rules
 .vscode
 PanoramaMediaFiles
-FreeCameraSettings.json
-PanoramaViewerSettings.json
+FreeCameraConfig.json
+PanoramaViewerConfig.json
