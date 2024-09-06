@@ -3,10 +3,8 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.Video;
 using Assets.Scripts.PanoramaViewer;
-using static Assets.Scripts.PanoramaViewer.Minimap;
 using static Assets.Scripts.PanoramaViewer.TextureLoader;
 using static Assets.Scripts.PanoramaViewer.PanoramicSkyboxControl;
 
@@ -15,7 +13,9 @@ public class SceneController : MonoBehaviour
     public Camera mainCamera;
     ViewerConfig viewerConfig;
     VideoPlayer videoPlayer;
+    Minimap minimap;
     // List to store the paths of images and videos to display
+    string minimapsDir;
     List<string> mediaFiles;
     // Tracks the index of the currently displayed media file
     int currentMediaIndex = -1;
@@ -50,6 +50,33 @@ public class SceneController : MonoBehaviour
             ).ToList();
     }
 
+    public static string FindFile(
+        string directoryPath,
+        string fileNameWithoutExtension,
+        List<string> allowedExtensions = null
+    )
+    {
+        if (!Directory.Exists(directoryPath))
+        {
+            Debug.LogWarning("Directory not found: " + directoryPath);
+            return null;
+        }
+
+        var files = Directory.EnumerateFiles(
+            directoryPath,
+            $"{fileNameWithoutExtension}.*",
+            SearchOption.TopDirectoryOnly
+        );
+
+        if (allowedExtensions != null && allowedExtensions.Count > 0)
+        {
+            files = files.Where(
+                file => allowedExtensions.Contains(Path.GetExtension(file))
+            );
+        }
+        return files.FirstOrDefault();
+    }
+
     /// <summary> Handles keyboard input for navigation </summary>
     void ControlKeys()
     {
@@ -71,6 +98,16 @@ public class SceneController : MonoBehaviour
         }
     }
 
+    void MinimapFadeOut()
+    {
+        if (minimap.IsVisible())
+        {
+            StartCoroutine(
+                minimap.FadeTransition(false, viewerConfig.fadeDuration)
+            );
+        }
+    }
+
     /// <summary>
     /// Waits for a specified time before fading out the skybox
     /// </summary>
@@ -80,6 +117,7 @@ public class SceneController : MonoBehaviour
         StartCoroutine(
             SkyboxFadeTransition(false, viewerConfig.fadeDuration)
         );
+        MinimapFadeOut();
     }
 
     /// <summary> 
@@ -88,6 +126,7 @@ public class SceneController : MonoBehaviour
     IEnumerator ImageFadeOut()
     {
         yield return new WaitForSeconds(viewerConfig.imageDelay);
+        MinimapFadeOut();
         yield return SkyboxFadeTransition(false, viewerConfig.fadeDuration);
         StartCoroutine(ChangePanorama(PanoramaDirection.Forward));
     }
@@ -112,8 +151,7 @@ public class SceneController : MonoBehaviour
 
         if (viewerConfig.autoPlay)
         {
-            var fadeDuration = viewerConfig.fadeDuration - 1;
-            var timeBeforeEnd = (float)videoPlayer.length - fadeDuration;
+            var timeBeforeEnd = (float)videoPlayer.length - viewerConfig.fadeDuration;
             StartCoroutine(VideoFadeOut(timeBeforeEnd));
         }
 
@@ -134,6 +172,16 @@ public class SceneController : MonoBehaviour
             currentMediaIndex + mediaFiles.Count
         ) % mediaFiles.Count;
 
+        var filePath = mediaFiles[currentMediaIndex];
+        var fileFormat = Path.GetExtension(filePath);
+        var minimapImage = FindFile(
+            minimapsDir,
+            Path.GetFileNameWithoutExtension(filePath),
+            imageFormats
+        );
+
+        MinimapFadeOut();
+
         if (!viewerConfig.autoPlay && !firstRun)
         {
             yield return SkyboxFadeTransition(
@@ -141,28 +189,31 @@ public class SceneController : MonoBehaviour
             );
         }
 
-        string fileFormat = Path.GetExtension(mediaFiles[currentMediaIndex]);
+        if (minimapImage != null)
+        {
+            minimap.SetImage(minimapImage);
+            StartCoroutine(minimap.FadeTransition(true, viewerConfig.fadeDuration));
+        }
+
+        ScreenMessage.Hide();
         if (videoFormats.Contains(fileFormat))
         {
-            videoPlayer.url = mediaFiles[currentMediaIndex];
+            videoPlayer.url = filePath;
             videoPlayer.Prepare();
         }
         else if (imageFormats.Contains(fileFormat))
         {
             videoPlayer.Stop();
-            var renderTexture = ImageToRenderTexture(
-                mediaFiles[currentMediaIndex]
-            );
+            var renderTexture = ImageToRenderTexture(filePath);
             UpdateSkyboxMainTexture(renderTexture);
             Resources.UnloadUnusedAssets();
-            ScreenMessage.Hide();
             yield return SkyboxFadeTransition(
                 true, viewerConfig.fadeDuration
             );
-            transitionLock = false;
             if (viewerConfig.autoPlay) StartCoroutine(ImageFadeOut());
         }
         firstRun = false;
+        transitionLock = false;
     }
 
     void OnVideoEnd(VideoPlayer _)
@@ -184,7 +235,7 @@ public class SceneController : MonoBehaviour
             ? Application.persistentDataPath
             : Directory.GetParent(Application.dataPath).ToString();
         var mediaDir = Path.Combine(appDataDir, "PanoramaMediaFiles");
-        var minimapsDir = Path.Combine(mediaDir, "Minimaps");
+        minimapsDir = Path.Combine(mediaDir, "Minimaps");
 
         Directory.CreateDirectory(mediaDir);
         Directory.CreateDirectory(minimapsDir);
@@ -222,24 +273,13 @@ public class SceneController : MonoBehaviour
         videoPlayer.isLooping = true;
         videoPlayer.SetDirectAudioVolume(0, .5f);
 
-        // ---
-        var minimap = new GameObject("Minimap");
-        var minimapCanvas = minimap.AddComponent<Canvas>();
-        minimapCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        minimap.AddComponent<CanvasScaler>();
-        minimap.AddComponent<GraphicRaycaster>();
-
-        var minimapImageWrapper = new GameObject("Minimap Image");
-        minimapImageWrapper.transform.SetParent(minimap.transform);
-
-        var minimapImage = minimapImageWrapper.AddComponent<RawImage>();
-        var imagePath = @"";
-
-        var imageData = File.ReadAllBytes(imagePath);
-        minimapImage.texture = LoadTextureFromFile(imagePath);
-
-        SetMinimapSizeAndPosition(minimap, MinimapPosition.TopRight, 1, 50f);
-        // ---
+        // Initialize minimap
+        minimap = new Minimap();
+        minimap.Scale(viewerConfig.minimap.scale);
+        minimap.SetPosition(
+            viewerConfig.minimap.position,
+            viewerConfig.minimap.offset
+        );
 
         ScreenMessage.Show("Loading ...");
         StartCoroutine(ChangePanorama(PanoramaDirection.Forward));

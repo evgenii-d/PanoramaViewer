@@ -28,23 +28,24 @@ namespace Assets.Scripts.PanoramaViewer
         /// <param name="fadeIn">True for fade-in, False for fade-out</param>
         /// <param name="duration">The duration in seconds.</param>
         /// <returns>IEnumerator that can be used to yield control</returns>
-        public static IEnumerator SkyboxFadeTransition(
-            bool fadeIn, float duration
-        )
+        public static IEnumerator SkyboxFadeTransition(bool fadeIn, float duration)
         {
-            const float Steps = 100;
-            float i = fadeIn ? 0 : Steps;
-            while (fadeIn ? i <= Steps : i >= 0)
+            float start = fadeIn ? 0 : 1;
+            float end = fadeIn ? 1 : 0;
+
+            for (float t = 0; t < duration; t += Time.deltaTime)
             {
-                i = fadeIn ? i + 1 : i - 1;
-                RenderSettings.skybox.SetFloat("_Exposure", i / Steps);
-                yield return new WaitForSeconds(duration / Steps);
+                var exposure = Mathf.Lerp(start, end, t / duration);
+                RenderSettings.skybox.SetFloat("_Exposure", exposure);
+                yield return null;
             }
+            RenderSettings.skybox.SetFloat("_Exposure", end);
         }
 
         public static void UpdateSkyboxMainTexture(RenderTexture renderTexture)
         {
             RenderSettings.skybox.mainTexture = renderTexture;
+            var mappingKeyword = "_MAPPING_6_FRAMES_LAYOUT";
             var aspectRation = CalculateAspectRatio(
                 renderTexture.width, renderTexture.height
             );
@@ -52,25 +53,19 @@ namespace Assets.Scripts.PanoramaViewer
             switch (aspectRation)
             {
                 case "2:1":
-                    RenderSettings.skybox.DisableKeyword(
-                        "_MAPPING_6_FRAMES_LAYOUT"
-                    );
+                    RenderSettings.skybox.DisableKeyword(mappingKeyword);
                     RenderSettings.skybox.SetFloat("_Mapping", 1);
                     RenderSettings.skybox.SetFloat("_ImageType", 0);
                     RenderSettings.skybox.SetFloat("_Layout", 0);
                     break;
                 case "1:1":
-                    RenderSettings.skybox.DisableKeyword(
-                        "_MAPPING_6_FRAMES_LAYOUT"
-                    );
+                    RenderSettings.skybox.DisableKeyword(mappingKeyword);
                     RenderSettings.skybox.SetFloat("_Mapping", 1);
                     RenderSettings.skybox.SetFloat("_ImageType", 0);
                     RenderSettings.skybox.SetFloat("_Layout", 2);
                     break;
                 case "6:1":
-                    RenderSettings.skybox.EnableKeyword(
-                        "_MAPPING_6_FRAMES_LAYOUT"
-                    );
+                    RenderSettings.skybox.EnableKeyword(mappingKeyword);
                     RenderSettings.skybox.SetFloat("_Mapping", 0);
                     break;
                 default:
