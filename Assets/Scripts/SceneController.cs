@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
 using Assets.Scripts.PanoramaViewer;
+using static FileExplorer;
 using static Assets.Scripts.PanoramaViewer.TextureLoader;
 using static Assets.Scripts.PanoramaViewer.PanoramicSkyboxControl;
 
@@ -14,70 +15,31 @@ public class SceneController : MonoBehaviour
     ViewerConfig viewerConfig;
     VideoPlayer videoPlayer;
     Minimap minimap;
-    // List to store the paths of images and videos to display
+
+    // Directory where minimap images are stored
     string minimapsDir;
+
+    // List to store the paths of images and videos to display
     List<string> mediaFiles;
+
     // Tracks the index of the currently displayed media file
     int currentMediaIndex = -1;
+
     // Prevents transitions from happening while one is in progress
     bool transitionLock = true;
+
     // Flag to indicate if this is the initial run
     bool firstRun = true;
+
+    // Supported image and video formats
     readonly List<string> imageFormats = new() { ".jpg", ".png" };
     readonly List<string> videoFormats = new() { ".mp4", ".webm" };
 
-    public enum PanoramaDirection
-    {
-        Forward,
-        Backward
-    }
+    public enum PanoramaDirection { Forward, Backward }
 
-    public static List<string> GetFilesFromDir(
-        string dirPath, IEnumerable<string> extensions = null
-    )
-    {
-        if (extensions == null || !extensions.Any())
-        {
-            return Directory.GetFiles(dirPath).ToList();
-        }
-
-        extensions = extensions.Select(ext => ext.ToLowerInvariant());
-        return Directory.EnumerateFiles(dirPath)
-            .Where(
-                file => extensions.Contains(
-                    Path.GetExtension(file).ToLowerInvariant()
-                )
-            ).ToList();
-    }
-
-    public static string FindFile(
-        string directoryPath,
-        string fileNameWithoutExtension,
-        List<string> allowedExtensions = null
-    )
-    {
-        if (!Directory.Exists(directoryPath))
-        {
-            Debug.LogWarning("Directory not found: " + directoryPath);
-            return null;
-        }
-
-        var files = Directory.EnumerateFiles(
-            directoryPath,
-            $"{fileNameWithoutExtension}.*",
-            SearchOption.TopDirectoryOnly
-        );
-
-        if (allowedExtensions != null && allowedExtensions.Count > 0)
-        {
-            files = files.Where(
-                file => allowedExtensions.Contains(Path.GetExtension(file))
-            );
-        }
-        return files.FirstOrDefault();
-    }
-
-    /// <summary> Handles keyboard input for navigation </summary>
+    /// <summary>
+    /// Handles keyboard input for navigating the media files.
+    /// </summary>
     void ControlKeys()
     {
         var keys = new Dictionary<KeyCode, PanoramaDirection>
@@ -98,6 +60,9 @@ public class SceneController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Fades out the minimap if it is currently visible.
+    /// </summary>
     void MinimapFadeOut()
     {
         if (minimap.IsVisible())
@@ -109,7 +74,8 @@ public class SceneController : MonoBehaviour
     }
 
     /// <summary>
-    /// Waits for a specified time before fading out the skybox
+    /// Coroutine that waits for a delay 
+    /// before fading out the video and minimap.
     /// </summary>
     IEnumerator VideoFadeOut(float delay)
     {
@@ -120,19 +86,21 @@ public class SceneController : MonoBehaviour
         MinimapFadeOut();
     }
 
-    /// <summary> 
-    /// Waits for the image display time before fading out
+    /// <summary>
+    /// Coroutine that waits for the image display time 
+    /// before fading out and moving to the next panorama.
     /// </summary>
     IEnumerator ImageFadeOut()
     {
-        yield return new WaitForSeconds(viewerConfig.imageDelay);
+        yield return new WaitForSeconds(viewerConfig.imageDisplayTime);
         MinimapFadeOut();
         yield return SkyboxFadeTransition(false, viewerConfig.fadeDuration);
         StartCoroutine(ChangePanorama(PanoramaDirection.Forward));
     }
 
     /// <summary>
-    /// Fades in the skybox and unlocks transitions
+    /// Coroutine that unlocks transitions 
+    /// after the skybox fade-in animation is complete.
     /// </summary>
     IEnumerator UnlockTransition()
     {
@@ -143,6 +111,10 @@ public class SceneController : MonoBehaviour
         transitionLock = false;
     }
 
+    /// <summary>
+    /// Callback function for when a video is prepared.
+    /// Sets the render texture and starts video playback.
+    /// </summary>
     void OnVideoPrepared(VideoPlayer _)
     {
         var newRenderTexture = new RenderTexture(
@@ -162,15 +134,19 @@ public class SceneController : MonoBehaviour
         videoPlayer.Play();
     }
 
+    /// <summary>
+    /// Changes the current panorama image or video 
+    /// based on the specified direction.
+    /// Handles transitions and updating the minimap.
+    /// </summary>
     IEnumerator ChangePanorama(PanoramaDirection direction)
     {
         transitionLock = true;
         currentMediaIndex += direction == PanoramaDirection.Forward ? 1 : -1;
 
         // Handles cycling back around if reaching end of the media file list
-        currentMediaIndex = (
-            currentMediaIndex + mediaFiles.Count
-        ) % mediaFiles.Count;
+        currentMediaIndex = (currentMediaIndex + mediaFiles.Count)
+            % mediaFiles.Count;
 
         var filePath = mediaFiles[currentMediaIndex];
         var fileFormat = Path.GetExtension(filePath);
@@ -181,7 +157,6 @@ public class SceneController : MonoBehaviour
         );
 
         MinimapFadeOut();
-
         if (!viewerConfig.autoPlay && !firstRun)
         {
             yield return SkyboxFadeTransition(
@@ -192,7 +167,9 @@ public class SceneController : MonoBehaviour
         if (minimapImage != null)
         {
             minimap.SetImage(minimapImage);
-            StartCoroutine(minimap.FadeTransition(true, viewerConfig.fadeDuration));
+            StartCoroutine(
+                minimap.FadeTransition(true, viewerConfig.fadeDuration)
+            );
         }
 
         ScreenMessage.Hide();
@@ -216,6 +193,10 @@ public class SceneController : MonoBehaviour
         transitionLock = false;
     }
 
+    /// <summary>
+    /// Callback function for when a video ends. 
+    /// Moves to the next panorama if autoPlay is enabled.
+    /// </summary>
     void OnVideoEnd(VideoPlayer _)
     {
         if (viewerConfig.autoPlay)
@@ -226,9 +207,9 @@ public class SceneController : MonoBehaviour
 
     void Start()
     {
-        // Scene blackout
+        // Initialize Panoramic Skybox
         RenderSettings.skybox.SetFloat("_Exposure", 0);
-        RenderSettings.skybox = null;
+        RenderSettings.skybox = new(Shader.Find("Skybox/Panoramic"));
 
         // Set app directories
         var appDataDir = Application.platform == RuntimePlatform.Android
@@ -240,13 +221,13 @@ public class SceneController : MonoBehaviour
         Directory.CreateDirectory(mediaDir);
         Directory.CreateDirectory(minimapsDir);
 
-        // Load settings
+        // Load viewer configuration from JSON
         var settingsManager = new JsonConfigManager(
             Path.Combine(appDataDir, "PanoramaViewerConfig.json")
         );
         viewerConfig = settingsManager.Load<ViewerConfig>();
 
-        // Get media files
+        // Get list of media files
         mediaFiles = GetFilesFromDir(
             mediaDir, imageFormats.Union(videoFormats)
         );
@@ -261,9 +242,6 @@ public class SceneController : MonoBehaviour
             return;
         }
 
-        // Initialize Panoramic Skybox
-        RenderSettings.skybox = new(Shader.Find("Skybox/Panoramic"));
-
         // Create Video Player
         var videoPlayerWrapper = new GameObject("Video Player");
         videoPlayer = videoPlayerWrapper.AddComponent<VideoPlayer>();
@@ -271,7 +249,7 @@ public class SceneController : MonoBehaviour
         videoPlayer.loopPointReached += OnVideoEnd;
         videoPlayer.playOnAwake = false;
         videoPlayer.isLooping = true;
-        videoPlayer.SetDirectAudioVolume(0, .5f);
+        videoPlayer.SetDirectAudioVolume(0, 0.5f);
 
         // Initialize minimap
         minimap = new Minimap();

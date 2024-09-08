@@ -3,15 +3,21 @@ using System.IO;
 using UnityEngine;
 
 [Serializable]
+public class CameraZoomConfig
+{
+    public bool enabled = true;
+    [Range(1f, 10.0f)]
+    public float magnification = 1.5f;
+}
+
+[Serializable]
 public class FreeCameraConfig
 {
     [Range(0.0f, 180.0f)]
     public float fieldOfView = 60f;
     [Range(0.0f, 10.0f)]
     public float mouseSensitivity = 1f;
-    public bool zoom = true;
-    [Range(1f, 10.0f)]
-    public float zoomMagnification = 1.5f;
+    public CameraZoomConfig zoom = new();
 }
 
 public class FreeCamera : MonoBehaviour
@@ -22,7 +28,7 @@ public class FreeCamera : MonoBehaviour
 
     void Start()
     {
-        string appDataDir = Application.platform == RuntimePlatform.Android
+        var appDataDir = Application.platform == RuntimePlatform.Android
             ? Application.persistentDataPath
             : Directory.GetParent(Application.dataPath).ToString();
         var settingsManager = new JsonConfigManager(
@@ -43,10 +49,11 @@ public class FreeCamera : MonoBehaviour
             Quaternion.Euler(-rotation.y, rotation.x, 0);
 
         // Detect right mouse click
-        if (Input.GetMouseButton(1) && cameraConfig.zoom)
+        if (Input.GetMouseButton(1) && cameraConfig.zoom.enabled)
+        {
             currentCamera.fieldOfView =
-                cameraConfig.fieldOfView / cameraConfig.zoomMagnification;
-        else
-            currentCamera.fieldOfView = cameraConfig.fieldOfView;
+                cameraConfig.fieldOfView / cameraConfig.zoom.magnification;
+        }
+        else currentCamera.fieldOfView = cameraConfig.fieldOfView;
     }
 }
