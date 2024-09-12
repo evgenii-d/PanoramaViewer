@@ -39,7 +39,7 @@ namespace Assets.Scripts.PanoramaViewer
         /// The width and height of the RenderTexture
         /// match the dimensions of the image.
         /// </returns>
-        public static RenderTexture ImageToRenderTexture(string path)
+        public static RenderTexture LoadImageAsRenderTexture(string path)
         {
             var texture = LoadImageAsTexture(path);
             var renderTexture = new RenderTexture(

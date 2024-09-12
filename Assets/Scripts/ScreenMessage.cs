@@ -11,24 +11,24 @@ public static class ScreenMessage
     private static GameObject canvasWrapper;
     private static TextMeshProUGUI textComponent;
     private static Image imageComponent;
-
-    // Static constructor to ensure the canvas is created on first use
-    static ScreenMessage() { CreateCanvas(); }
+    private static Camera renderCamera;
 
     /// <summary>
     /// Creates the UI canvas, background, and text components
     /// for displaying the screen message.
     /// </summary>
-    private static void CreateCanvas()
+    /// <param name="camera">Main camera.</param>
+    private static void CreateCanvas(Camera camera)
     {
+        renderCamera = camera;
         canvasWrapper = new GameObject("Screen Message");
         canvasWrapper.SetActive(false);
 
         var canvas = canvasWrapper.AddComponent<Canvas>();
         canvasWrapper.AddComponent<CanvasScaler>();
         canvasWrapper.AddComponent<GraphicRaycaster>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 999; // High priority order for overlay
+        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+        canvas.worldCamera = renderCamera;
 
         // Create the background for the message
         var background = new GameObject("Background");
@@ -36,7 +36,7 @@ public static class ScreenMessage
         imageComponent.transform.SetParent(canvasWrapper.transform, false);
         imageComponent.rectTransform.sizeDelta = new Vector2(
             Screen.width, Screen.height
-        );
+        ) * 1.5f;
         imageComponent.color = Color.black;
 
         // Create the text component for the message
@@ -55,10 +55,14 @@ public static class ScreenMessage
     /// <summary>
     /// Displays the specified message on the screen.
     /// </summary>
+    /// <param name="camera">Main camera.</param>
     /// <param name="message">The message to display.</param>
-    public static void Show(string message)
+    public static void Show(Camera camera, string message)
     {
-        if (canvasWrapper == null) CreateCanvas();
+        if (canvasWrapper == null || renderCamera != camera)
+        {
+            CreateCanvas(camera);
+        }
         canvasWrapper.SetActive(true);
         textComponent.text = message;
     }

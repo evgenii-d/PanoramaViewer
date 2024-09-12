@@ -1,13 +1,18 @@
 using System;
+using System.Collections.Generic;
 
 namespace Assets.Scripts.PanoramaViewer
 {
     [Serializable]
     public class MinimapConfig
     {
+        public string minimapFile;
+        public string panoramaFile;
         public MinimapPosition position = MinimapPosition.BottomRight;
-        public int offset = 50;
         public float scale = 1.0f;
+        public int xOffset = 50;
+        public int yOffset = 50;
+        public int zOffset = 0;
     }
 
     [Serializable]
@@ -16,7 +21,13 @@ namespace Assets.Scripts.PanoramaViewer
         public bool autoPlay = true;
         public float imageDisplayTime = 15f;
         public float fadeDuration = 2f;
-        public MinimapConfig minimap = new();
+        public List<MinimapConfig> minimaps = new()
+        {
+            new MinimapConfig() {
+                minimapFile = "FullFileNameFromMinimapsFolder",
+                panoramaFile = "fullFileNameFromPanoramaMediaFilesFolder",
+            }
+        };
 
     }
 }

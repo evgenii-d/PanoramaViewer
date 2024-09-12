@@ -1,6 +1,9 @@
+using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Video;
 using static Assets.Scripts.PanoramaViewer.TextureLoader;
 
 namespace Assets.Scripts.PanoramaViewer
@@ -10,42 +13,51 @@ namespace Assets.Scripts.PanoramaViewer
     /// <summary>
     /// The Minimap class handles the creation, scaling,
     /// positioning, and fading of a minimap in Unity.
-    /// The minimap displays an image and can be adjusted
-    /// based on screen size and aspect ratio.
+    /// The minimap displays an image or a video 
+    /// and can be adjusted based on screen size and aspect ratio.
     /// </summary>
     public class Minimap
     {
-        readonly GameObject minimap = new("Minimap");
-        readonly RawImage minimapImage;
-        readonly RectTransform imageTransform;
-        readonly CanvasGroup canvasGroup;
+        private readonly RawImage rawImage;
+        private readonly VideoPlayer videoPlayer;
+        private readonly CanvasGroup canvasGroup;
+        private readonly RectTransform rawImageTransform;
+        readonly List<string> imageFormats = new() { ".jpg", ".png" };
+        readonly List<string> videoFormats = new() { ".mp4", ".webm" };
 
-        public Minimap(string path = null)
+        public Minimap(Camera renderCamera, string path = null)
         {
-            // Create the canvas for the minimap, which will render on screen
+            var minimap = new GameObject("Minimap");
             var minimapCanvas = minimap.AddComponent<Canvas>();
-            minimapCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            minimapCanvas.renderMode = RenderMode.ScreenSpaceCamera;
+            minimapCanvas.worldCamera = renderCamera;
+            minimapCanvas.planeDistance = 1;
             minimap.AddComponent<CanvasScaler>();
             minimap.AddComponent<GraphicRaycaster>();
 
-            // Create and set up the RawImage for displaying the minimap image
-            var minimapImageWrapper = new GameObject("Minimap Image");
-            minimapImageWrapper.transform.SetParent(minimap.transform);
-            minimapImage = minimapImageWrapper.AddComponent<RawImage>();
-            imageTransform = minimapImage.GetComponent<RectTransform>();
+            // Create and set up the RawImage for displaying the minimap
+            var rawImageWrapper = new GameObject("RawImage Wrapper");
+            rawImageWrapper.transform.SetParent(minimap.transform);
+            rawImage = rawImageWrapper.AddComponent<RawImage>();
+            rawImageTransform = rawImage.GetComponent<RectTransform>();
+            rawImageTransform.anchoredPosition3D = new Vector3(0, 0, 0);
 
             // Set initial size of the minimap (1/4th of the screen size)
             var screenSize = new Vector2(Screen.width, Screen.height);
-            imageTransform.sizeDelta = screenSize / 4f;
+            rawImageTransform.sizeDelta = screenSize / 4f;
 
             // CanvasGroup for fading
             canvasGroup = minimap.AddComponent<CanvasGroup>();
 
-            // Set the minimap's default position
-            SetPosition(MinimapPosition.BottomRight);
+            videoPlayer = rawImageWrapper.AddComponent<VideoPlayer>();
+            videoPlayer.SetDirectAudioVolume(0, 0);
+            videoPlayer.prepareCompleted += OnVideoPrepared;
+            videoPlayer.playOnAwake = false;
+            videoPlayer.isLooping = true;
 
-            // If a path is provided, set the minimap image
-            if (path != null) SetImage(path);
+            SetPosition(MinimapPosition.BottomRight);
+            Scale(1);
+            if (path != null) SetMedia(path);
         }
 
         /// <summary>
@@ -63,45 +75,70 @@ namespace Assets.Scripts.PanoramaViewer
         /// </summary>
         public bool IsVisible() => canvasGroup.alpha > 0;
 
+        private void OnVideoPrepared(VideoPlayer player)
+        {
+            var renderTexture = new RenderTexture(
+                (int)player.width, (int)player.height, 32
+            );
+            rawImage.texture = renderTexture;
+            player.targetTexture = renderTexture;
+            AdjustMinimapSize(renderTexture);
+            player.Play();
+        }
+
         /// <summary>
-        /// Adjusts the size of the minimap based on the screen dimensions
-        /// and the image's aspect ratio.
+        /// Adjusts the size of the minimap based on the screen
+        /// dimensions and the media's aspect ratio.
         /// </summary>
-        /// <param name="texture">The texture of the minimap image.</param>
-        private void AdjustMinimapSize(Texture texture)
+        /// <param name="texture">
+        /// The texture of the minimap image.
+        /// </param>
+        private void AdjustMinimapSize(RenderTexture texture)
         {
             var screenSize = new Vector2(Screen.width, Screen.height);
-            imageTransform.sizeDelta = screenSize / 4f;
+            rawImageTransform.sizeDelta = screenSize / 4f;
 
             // Recalculate the sizeDelta to maintain the correct aspect ratio
             var aspectRatio = (float)texture.width / texture.height;
-            var newSize = imageTransform.sizeDelta;
+            var newSize = rawImageTransform.sizeDelta;
 
             // Adjust dimensions based on aspect ratio
             if (aspectRatio > 1) newSize.y = newSize.x / aspectRatio;
             else newSize.x = newSize.y * aspectRatio;
-            imageTransform.sizeDelta = newSize;
+            rawImageTransform.sizeDelta = newSize;
         }
 
         /// <summary>
-        /// Sets the image to be displayed on the minimap and adjusts
+        /// Sets the media to be displayed on the minimap and adjusts
         /// its size based on screen dimensions and aspect ratio.
         /// </summary>
-        /// <param name="path">File path to the image.</param>
-        public void SetImage(string path)
+        /// <param name="path">File path to the media.</param>
+        public void SetMedia(string path)
         {
-            var texture = LoadImageAsTexture(path);
-            if (texture == null)
+            if (!File.Exists(path))
             {
-                Debug.LogWarning($"Failed to load texture from {path}");
+                Debug.LogWarning($"Failed to load media from '{path}'");
                 return;
             }
-            minimapImage.texture = texture;
-            AdjustMinimapSize(texture);
+            var fileFormat = Path.GetExtension(path);
+
+            videoPlayer.Stop();
+            if (videoFormats.Contains(fileFormat))
+            {
+                videoPlayer.url = path;
+                videoPlayer.Prepare();
+            }
+            else if (imageFormats.Contains(fileFormat))
+            {
+                var renderTexture = LoadImageAsRenderTexture(path);
+                rawImage.texture = renderTexture;
+                AdjustMinimapSize(renderTexture);
+                Resources.UnloadUnusedAssets();
+            }
         }
 
         /// <summary>
-        /// Scales the minimap by a given factor, 
+        /// Scales the minimap by a given factor,
         /// clamped between 0 and 2.
         /// </summary>
         /// <param name="scale">
@@ -110,7 +147,7 @@ namespace Assets.Scripts.PanoramaViewer
         public void Scale(float scale)
         {
             scale = Mathf.Clamp(scale, 0, 2);
-            imageTransform.localScale = new Vector3(scale, scale, 1);
+            rawImageTransform.localScale = new Vector3(scale, scale, 1);
         }
 
         /// <summary>
@@ -121,40 +158,46 @@ namespace Assets.Scripts.PanoramaViewer
         /// The position of the minimap
         /// (TopLeft, TopRight, BottomLeft, BottomRight).
         /// </param>
-        /// <param name="offset">
-        /// Optional offset to apply to the minimap's position.
-        /// </param>
-        public void SetPosition(MinimapPosition position, float offset = 0)
+        /// <param name="xOffset">X offset</param>
+        /// <param name="yOffset">Y offset</param>
+        /// <param name="zOffset">Z offset</param>
+        public void SetPosition(
+            MinimapPosition position,
+            float xOffset = 0,
+            float yOffset = 0,
+            float zOffset = 0
+        )
         {
-            Vector2 anchorMin, anchorMax, pivot, offsetValue;
+            Vector2 anchorMin, anchorMax, pivot;
+            Vector3 offsetValue;
             switch (position)
             {
                 case MinimapPosition.TopLeft:
                     anchorMin = anchorMax = pivot = new Vector2(0, 1);
-                    offsetValue = new(offset, -offset);
+                    offsetValue = new(xOffset, -yOffset, zOffset);
                     break;
 
                 case MinimapPosition.TopRight:
                     anchorMin = anchorMax = pivot = new Vector2(1, 1);
-                    offsetValue = new(-offset, -offset);
+                    offsetValue = new(-xOffset, -yOffset, zOffset);
                     break;
 
                 case MinimapPosition.BottomLeft:
                     anchorMin = anchorMax = pivot = new Vector2(0, 0);
-                    offsetValue = new(offset, offset);
+                    offsetValue = new(xOffset, yOffset, zOffset);
                     break;
 
                 case MinimapPosition.BottomRight:
                     anchorMin = anchorMax = pivot = new Vector2(1, 0);
-                    offsetValue = new(-offset, offset);
+                    offsetValue = new(-xOffset, yOffset, zOffset);
                     break;
                 default:
                     return;
             }
-            imageTransform.anchorMin = anchorMin;
-            imageTransform.anchorMax = anchorMax;
-            imageTransform.pivot = pivot;
-            imageTransform.anchoredPosition = offsetValue;
+            rawImageTransform.anchorMin = anchorMin;
+            rawImageTransform.anchorMax = anchorMax;
+            rawImageTransform.pivot = pivot;
+            rawImageTransform.anchoredPosition3D = offsetValue;
         }
 
         /// <summary>

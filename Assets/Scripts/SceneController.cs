@@ -123,7 +123,8 @@ public class SceneController : MonoBehaviour
 
         if (viewerConfig.autoPlay)
         {
-            var timeBeforeEnd = (float)videoPlayer.length - viewerConfig.fadeDuration;
+            var timeBeforeEnd =
+                (float)videoPlayer.length - viewerConfig.fadeDuration;
             StartCoroutine(VideoFadeOut(timeBeforeEnd));
         }
 
@@ -150,11 +151,6 @@ public class SceneController : MonoBehaviour
 
         var filePath = mediaFiles[currentMediaIndex];
         var fileFormat = Path.GetExtension(filePath);
-        var minimapImage = FindFile(
-            minimapsDir,
-            Path.GetFileNameWithoutExtension(filePath),
-            imageFormats
-        );
 
         MinimapFadeOut();
         if (!viewerConfig.autoPlay && !firstRun)
@@ -164,12 +160,26 @@ public class SceneController : MonoBehaviour
             );
         }
 
-        if (minimapImage != null)
+        // Display minimap
+        foreach (var element in viewerConfig.minimaps)
         {
-            minimap.SetImage(minimapImage);
-            StartCoroutine(
-                minimap.FadeTransition(true, viewerConfig.fadeDuration)
-            );
+            var minimapPath = Path.Combine(minimapsDir, element.minimapFile);
+            if (element.panoramaFile == Path.GetFileName(filePath)
+                && File.Exists(minimapPath))
+            {
+                minimap.SetMedia(minimapPath);
+                minimap.Scale(element.scale);
+                minimap.SetPosition(
+                    element.position,
+                    element.xOffset,
+                    element.yOffset,
+                    element.zOffset
+                );
+                StartCoroutine(
+                    minimap.FadeTransition(true, viewerConfig.fadeDuration)
+                );
+                break;
+            }
         }
 
         ScreenMessage.Hide();
@@ -181,7 +191,7 @@ public class SceneController : MonoBehaviour
         else if (imageFormats.Contains(fileFormat))
         {
             videoPlayer.Stop();
-            var renderTexture = ImageToRenderTexture(filePath);
+            var renderTexture = LoadImageAsRenderTexture(filePath);
             UpdateSkyboxMainTexture(renderTexture);
             Resources.UnloadUnusedAssets();
             yield return SkyboxFadeTransition(
@@ -197,7 +207,7 @@ public class SceneController : MonoBehaviour
     /// Callback function for when a video ends. 
     /// Moves to the next panorama if autoPlay is enabled.
     /// </summary>
-    void OnVideoEnd(VideoPlayer _)
+    void OnVideoEnd(VideoPlayer player)
     {
         if (viewerConfig.autoPlay)
         {
@@ -208,8 +218,8 @@ public class SceneController : MonoBehaviour
     void Start()
     {
         // Initialize Panoramic Skybox
-        RenderSettings.skybox.SetFloat("_Exposure", 0);
         RenderSettings.skybox = new(Shader.Find("Skybox/Panoramic"));
+        RenderSettings.skybox.SetFloat("_Exposure", 0);
 
         // Set app directories
         var appDataDir = Application.platform == RuntimePlatform.Android
@@ -235,6 +245,7 @@ public class SceneController : MonoBehaviour
         if (mediaFiles.Count == 0)
         {
             ScreenMessage.Show(
+                mainCamera,
                 "Media files not found\n\n"
                 + $"Add files to\n\"{mediaDir}\"\n"
                 + "and restart application"
@@ -252,14 +263,10 @@ public class SceneController : MonoBehaviour
         videoPlayer.SetDirectAudioVolume(0, 0.5f);
 
         // Initialize minimap
-        minimap = new Minimap();
-        minimap.Scale(viewerConfig.minimap.scale);
-        minimap.SetPosition(
-            viewerConfig.minimap.position,
-            viewerConfig.minimap.offset
-        );
+        minimap = new Minimap(mainCamera);
+        minimap.Hide();
 
-        ScreenMessage.Show("Loading ...");
+        ScreenMessage.Show(mainCamera, "Loading ...");
         StartCoroutine(ChangePanorama(PanoramaDirection.Forward));
     }
 
