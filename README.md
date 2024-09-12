@@ -8,6 +8,7 @@ Features:
 * Transition between panoramas with a Fade In/Fade Out effect
 * Zoom In with Right Mouse Button (Windows/Linux) or two-finger tap (Android)
 * Switch between panoramas using the Arrow Left/Page Down and Arrow Right/Page Up keys (**autoPlay** must be set to `false`)
+* Configurable Minimap for each photo or video panorama. Supported file formats: *.jpg*, *.png*, *.mp4*, *.webm*
 
 Made with Unity 2022.3.16.f
 
@@ -43,41 +44,49 @@ References:
 * [FFmpeg. H.264 Video Encoding Guide][3]
 * [FFmpeg. H.265/HEVC Video Encoding Guide][4]
 
-## Application Settings
+## Application Configuration
 
-There are two `.json` files that will be generated upon the first launch: **PanoramaViewerSettings** and **FreeCameraSettings**.
+There are two `.json` files that will be generated upon the first launch: **PanoramaViewerConfig** and **FreeCameraConfig**.
 
-Path to the setting files:
+Path to the config files:
 
 * Android: `/storage/emulated/<userid>/Android/data/<packagename>/files`
 * Windows/Linux: Application folder
 
-### PanoramaViewerSettings.json
+### PanoramaViewerConfig.json
 
 ```json
 {
     "autoPlay": true,
-    "imageDelay": 15.0,
+    "imageDisplayTime": 15.0,
     "fadeDuration": 2.0,
-    "imageFormats": [
-        ".jpg",
-        ".png"
-    ],
-    "videoFormats": [
-        ".mp4",
-        ".webm"
+    "minimaps": [
+        {
+            "minimapFile": "FullFileNameFromMinimapsFolder",
+            "panoramaFile": "fullFileNameFromPanoramaMediaFilesFolder",
+            "position": 3,
+            "scale": 1.0,
+            "xOffset": 50,
+            "yOffset": 50,
+            "zOffset": 0
+        }
     ]
 }
 ```
 
-### FreeCameraSettings.json
+* Minimap **position**: TopLeft - 0, TopRight - 1, BottomLeft - 2, BottomRight - 3.
+* **Scale** values: from 0.0 to 2.0. 1.0 is default size (1/4th of the screen size).
+
+### FreeCameraConfig.json
 
 ```json
 {
     "fieldOfView": 60.0,
     "mouseSensitivity": 1.0,
-    "zoom": true,
-    "zoomMagnification": 1.5
+    "zoom": {
+        "enabled": true,
+        "magnification": 1.5
+    }
 }
 ```
 
